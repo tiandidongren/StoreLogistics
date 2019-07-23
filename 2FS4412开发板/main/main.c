@@ -1,6 +1,6 @@
 #include<stdio.h>
 #include<pthread.h>
-#include<sqlite3.h>
+#include"sqlite3.h"
 #include<signal.h>
 
 //#include"exynos4412.h"

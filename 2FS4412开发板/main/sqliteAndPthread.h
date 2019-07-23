@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <sqlite3.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/types.h>
@@ -15,6 +14,7 @@
 #include <signal.h>
 
 #include"public.h"
+#include "sqlite3.h"
 
 #define MEMORY_LEN 1024
 union semun{
