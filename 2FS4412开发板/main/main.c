@@ -1,6 +1,7 @@
 #include<stdio.h>
 #include<pthread.h>
 #include<sqlite3.h>
+#include<signal.h>
 
 //#include"exynos4412.h"
 #include"public.h"
@@ -8,6 +9,8 @@
 
 int main(int argc, const char *argv[])
 {
+	int ret;
+	
 	//创建数据库或者打开数据库
 	if(sqlite3_open("history.db",&db))
 	{
@@ -15,9 +18,16 @@ int main(int argc, const char *argv[])
 				sqlite3_errmsg(db));
 		return -1;
 	}
+	MSG=(message_env_t*)malloc(sizeof(message_env_t));
+	if(NULL==MSG)
+	{
+		printf("create message_env_t is fail\n");
+		return -1;
+	}
 
-	int ret;
-
+	//注册信号处理函数,一旦ctrl+c结束进程,则将
+	//进成的资源释放
+	signal(SIGINT,sighandler_free_resource);
 	//初始化互斥锁
 	ret=pthread_mutex_init(&mutex,NULL);
 	if(ret<0)

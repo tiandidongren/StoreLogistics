@@ -12,16 +12,17 @@
 #include <sys/sem.h>
 #include <errno.h>
 #include <time.h>
+#include <signal.h>
 
 #include"public.h"
 
-#define MEMORY_LEN 256
+#define MEMORY_LEN 1024
 union semun{
 	int val;
 };
 
 sqlite3 *db; 				//数据库指针
-message_env_t MSG; 			//接收并同步信息的
+message_env_t* MSG; 			//接收并同步信息的
 
 pthread_t id_client_request, 	//处理客户端请求,根据相应请求调用数据库线程或者下发命令的线程
 		  id_recv_M0_msg, 		//处理M0发送来的数据,并填充到结构体中
@@ -54,20 +55,6 @@ union semun history_val_t[2];
 struct sembuf history_op_t[2]; 	//用来处理命令的信号量
 char *history_address;
 
-// 	  对于上锁,在对结构体操作的两个信息传递的进程使用全局的变量.
-//
-//
-//
-// 	  对于下发命令的进程而言,下达的给M0的命令可以在使用时
-//创建临时变量,结束后销毁即可.但是在上传历史记录时,与CGI的通讯
-//会用到共享内存,可以写入共享内存的前后加入互斥锁,保证在同一时间
-//只能上传历史记录或者实时同步信息
-//
-//
-//
-//为了避免对共享内存使用与CGI造成静态的问题,使用信号量(或者说信号灯)
-//来保护共享内存
-
 //线程的要执行的函数
 //处理客户端请求
 void * pthread_client_request(void*);
@@ -97,9 +84,7 @@ void sqlite_add_data(message_env_t* data);
 //查询并讲查询到的历史数据通过???函数传递给CGI
 void sqlite_inquity(void);
 
-
 //使用信号处理函数,回收线程资源
-//
-//
-//
+void sighandler_free_resource(int sig);
+
 #endif

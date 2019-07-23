@@ -7,28 +7,28 @@ void semop_semval_init(void)
 	msg_val_t[1].val=0;
 	msg_op_t[0].sem_num=0;
 	msg_op_t[0].sem_op=-1;
-	//msg_op_t[0].sem_flg=0;
+	msg_op_t[0].sem_flg=0;
 	msg_op_t[1].sem_num=1;
 	msg_op_t[1].sem_op=1;
-	//msg_op_t[1].sem_flg=0;
+	msg_op_t[1].sem_flg=0;
 
-	order_val_t[0].val=0;
-	order_val_t[1].val=1;
-	order_op_t[0].sem_num=1;
+	order_val_t[0].val=1;
+	order_val_t[1].val=0;
+	order_op_t[0].sem_num=0;
 	order_op_t[0].sem_op=-1;
-	//order_op_t[0].sem_flg=0;
-	order_op_t[1].sem_num=0;
+	order_op_t[0].sem_flg=0;
+	order_op_t[1].sem_num=1;
 	order_op_t[1].sem_op=1;
-	//order_op_t[1].sem_flg=0;
+	order_op_t[1].sem_flg=0;
 
-	msg_val_t[0].val=1;
-	msg_val_t[1].val=0;
-	msg_op_t[0].sem_num=0;
-	msg_op_t[0].sem_op=-1;
-	//msg_op_t[0].sem_flg=0;
-	msg_op_t[1].sem_num=1;
-	msg_op_t[1].sem_op=1;
-	//msg_op_t[1].sem_flg=0;
+	history_val_t[0].val=1;
+	history_val_t[1].val=0;
+	history_op_t[0].sem_num=0;
+	history_op_t[0].sem_op=-1;
+	history_op_t[0].sem_flg=0;
+	history_op_t[1].sem_num=1;
+	history_op_t[1].sem_op=1;
+	history_op_t[1].sem_flg=0;
 }
 //对key的初始化,成功返回0,失败返回-1
 int key_init(void)
@@ -127,7 +127,7 @@ int sem_create(void)
 	order_semid=semget(order_key,2,IPC_CREAT|IPC_EXCL|0777);
 	if(order_semid<0){
 		if(errno==EEXIST){
-			msg_semid=semget(order_key,2,0);
+			order_semid=semget(order_key,2,0);
 		}
 		else{
 			printf("create order_semid fail\n");
@@ -142,7 +142,7 @@ int sem_create(void)
 	history_semid=semget(history_key,2,IPC_CREAT|IPC_EXCL|0777);
 	if(history_semid<0){
 		if(errno==EEXIST){
-			msg_semid=semget(history_key,2,0);
+			history_semid=semget(history_key,2,0);
 		}
 		else{
 			printf("create history_semid fail\n");
@@ -153,6 +153,7 @@ int sem_create(void)
 		semctl(history_semid,i,SETVAL,history_val_t[i]);
 	}
 
+	printf("create sem successful\n");
 	return 0;
 }
 //线君应是循环阻塞等待???
@@ -168,13 +169,13 @@ void * pthread_client_request(void*empty)
 	{
 		//使用命令信号量,读取映射的命令地址的内容到msg_env指针中
 		ret=semop(order_semid,order_op_t,2);
-		printf("%d\n",ret);
+		///printf("======\n");
 
 		strncpy((char*)msg_env,order_address,sizeof(message_env_t));
 		//此处直接使用msg_env指针指向改地址是否可行?
 		//msg_env=(message_env_t*)order_address;
+		///printf("++++++\n");
 
-		//printf("pthread_client_request\n");
 		if(CGI_ORDER==msg_env->type){
 			//将数据发送给M0,调用发送命令的线程,发送后销毁
 			ret=pthread_create(&id_send_order_to_M0,NULL,pthread_send_order_to_M0,(void*)msg_env);
@@ -194,7 +195,6 @@ void * pthread_client_request(void*empty)
 			}
 		}
 	}
-
 
 	//回收线程资源?
 }
@@ -224,14 +224,15 @@ void * pthread_send_msg_to_client(void*empty)
 	//使用pthread_mutex_lock,上互斥锁一失败等待,
 	//成功后,将结构体数据写入共享内存一中,然后释放
 	//锁一,并对信号量进行操作(可在锁外进行)
-	printf("pthread_send_msg_to_client\n");
 	while(1)
 	{
 		semop(msg_semid,msg_op_t,2);
 		printf("pthread_send_msg_to_client\n");
 		pthread_mutex_lock(&mutex);
-		strcpy(msg_address,(char*)&MSG);
-		sqlite_add_data(&MSG);
+		strncpy(msg_address,(char*)MSG,sizeof(message_env_t));
+		msg_address[sizeof(message_env_t)]='\0';
+		sqlite_add_data(MSG);
+		printf("---------\n");
 		pthread_mutex_unlock(&mutex);
 		printf("pthread_send_msg_to_client\n");
 		sleep(5);
@@ -263,6 +264,10 @@ void sqlite_add_data(message_env_t* data)
 {
 	char *sql,*ptr_time,*errmsg;
 	char *send_msg;
+	//为指针分配空间;
+	sql=(char*)malloc(sizeof(1024));
+	send_msg=(char*)malloc(sizeof(1024));
+
 	time_t time_data;
 	if(time(&time_data)<0){
 		perror("get time");
@@ -274,8 +279,10 @@ void sqlite_add_data(message_env_t* data)
 		printf("change sec is fail\n");
 		return ;
 	}
+	printf("_____\n");
 	//对温度的正负进行判断,
 	if(data->temp[0]>128){
+		///printf("true******\n");
 		sprintf(sql,"insert into storemsg values('%c',-%d,%d,\
 			%d,%d,%d,%d,%d,%d,%d,%d,'%s')",\
 			data->snum,data->temp[0],data->temp[1],\
@@ -283,14 +290,18 @@ void sqlite_add_data(message_env_t* data)
 			data->y,data->z,data->ill,data->bet,\
 			data->adc,ptr_time);
 
+		///printf("true-----\n");
 		sprintf(send_msg,"store:%d\ntemp:-%d.%d\nhum:%d.%d\nx,y,z:%d,%d,%d\n\
 				ill:%d\nbet:%d\nadc:%d\n",\
 				data->snum,data->temp[0],data->temp[1],\
 				data->hum[0],data->hum[1],data->x,\
 				data->y,data->z,data->ill,data->bet,\
 				data->adc);
+
+		///printf("true+++++\n");
 	}
 	else{
+		///printf("false******\n");
 		sprintf(sql,"insert into storemsg values('%c',%d,%d,\
 			%d,%d,%d,%d,%d,%d,%d,%d,'%s')",\
 			data->snum,data->temp[0],data->temp[1],\
@@ -298,6 +309,7 @@ void sqlite_add_data(message_env_t* data)
 			data->y,data->z,data->ill,data->bet,\
 			data->adc,ptr_time);
 
+		///printf("false-----\n");
 		sprintf(send_msg,"store:%d\n\
 				temp:%d.%d\n\
 				hum:%d.%d\n\
@@ -309,12 +321,9 @@ void sqlite_add_data(message_env_t* data)
 				data->hum[0],data->hum[1],data->x,\
 				data->y,data->z,data->ill,data->bet,\
 				data->adc);
+		///printf("fasle+++++\n");
 	}
-
-	//此处应有函数处理,将send_msg发送给CGI
-	//
-	//
-
+	printf("=====\n");
 
 	if(sqlite3_exec(db,sql,NULL,NULL,&errmsg)!=SQLITE_OK){
 		printf("insert data is fail,error:%s\n",errmsg);
@@ -322,6 +331,11 @@ void sqlite_add_data(message_env_t* data)
 	}
 
 	printf("insert OK!\n");
+
+	free(sql);
+	sql=NULL;
+	free(send_msg);
+	send_msg=NULL;
 }
 
 void sqlite_inquity(void)
@@ -332,6 +346,9 @@ void sqlite_inquity(void)
 
 	char *sql;
 	char *send_msg;
+	//为指针分配空间;
+	sql=(char*)malloc(sizeof(1024));
+	send_msg=(char*)malloc(sizeof(1024));
 
 	sprintf(sql,"select * from storemsg");
 	if(sqlite3_get_table(db,sql,&result,&pn_row,&pn_col,&errmsg)!=SQLITE_OK){
@@ -372,5 +389,34 @@ void sqlite_inquity(void)
 		}
 	}
 
+	free(sql);
+	sql=NULL;
+	free(send_msg);
+	send_msg=NULL;
 }
 
+
+
+//使用信号处理函数,回收线程资源
+void sighandler_free_resource(int sig)
+{
+	pthread_detach(id_client_request);
+	pthread_detach(id_recv_M0_msg);
+	pthread_detach(id_send_msg_to_client);
+	pthread_detach(id_cemera);
+	//其中有两个线程等待3~4秒后,执行完毕自动回收,
+	//避免在其中分配的空间未回收
+	sleep(3);
+
+	free(MSG);
+	MSG=NULL;
+
+	//解除共享内存的映射
+	shmdt(msg_address);
+	shmdt(order_address);
+	shmdt(history_address);
+
+	printf("\nresource release\n");
+
+	exit(0);
+}
