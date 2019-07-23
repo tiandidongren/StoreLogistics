@@ -1,43 +1,222 @@
-#include<time.h>
-#include<error.h>
-#include<stdlib.h>
-
 #include"sqliteAndPthread.h"
 
+//对信号量的操作和信号量的值初始化
+void semop_semval_init(void)
+{
+	msg_val_t[0].val=1;
+	msg_val_t[1].val=0;
+	msg_op_t[0].sem_num=0;
+	msg_op_t[0].sem_op=-1;
+	//msg_op_t[0].sem_flg=0;
+	msg_op_t[1].sem_num=1;
+	msg_op_t[1].sem_op=1;
+	//msg_op_t[1].sem_flg=0;
+
+	order_val_t[0].val=0;
+	order_val_t[1].val=1;
+	order_op_t[0].sem_num=1;
+	order_op_t[0].sem_op=-1;
+	//order_op_t[0].sem_flg=0;
+	order_op_t[1].sem_num=0;
+	order_op_t[1].sem_op=1;
+	//order_op_t[1].sem_flg=0;
+
+	msg_val_t[0].val=1;
+	msg_val_t[1].val=0;
+	msg_op_t[0].sem_num=0;
+	msg_op_t[0].sem_op=-1;
+	//msg_op_t[0].sem_flg=0;
+	msg_op_t[1].sem_num=1;
+	msg_op_t[1].sem_op=1;
+	//msg_op_t[1].sem_flg=0;
+}
+//对key的初始化,成功返回0,失败返回-1
+int key_init(void)
+{
+	msg_key=ftok("/",'A');
+	if(msg_key<0){
+		perror("msg_key");
+		return -1;
+	}
+	order_key=ftok("/",'B');
+	if(order_key<0){
+		perror("order_key");
+		return -1;
+	}
+	history_key=ftok("/",'C');
+	if(history_key<0){
+		perror("history_key");
+		return -1;
+	}	
+
+	return 0;
+}
+//对共享内存进行初始化并进行映射,成功返回0,失败返回错误码
+int memory_create(void)
+{
+	int ret;
+	msg_shm=shmget(msg_key,MEMORY_LEN,IPC_CREAT|IPC_EXCL|0777);
+	if(msg_shm<0){
+		if(errno==EEXIST){
+			msg_shm=shmget(msg_key,0,0);
+		}
+		else{
+			perror("msg_shm");
+			return -1;
+		}
+	}
+	msg_address=shmat(msg_shm,NULL,0);
+	if((char*)-1==msg_address){
+		perror("msg_address");
+		return -1;
+	}
+
+	order_shm=shmget(order_key,MEMORY_LEN,IPC_CREAT|IPC_EXCL|0777);
+	if(order_shm<0){
+		if(errno==EEXIST){
+			order_shm=shmget(order_key,0,0);
+		}
+		else{
+			perror("order_shm");
+			return -1;
+		}
+	}
+	order_address=shmat(order_shm,NULL,0);
+	if((char*)-1==order_address){
+		perror("order_address");
+		return -1;
+	}
+
+	history_shm=shmget(history_key,MEMORY_LEN,IPC_CREAT|IPC_EXCL|0777);
+	if(history_shm<0){
+		if(errno==EEXIST){
+			history_shm=shmget(history_key,0,0);
+		}
+		else{
+			perror("history_shm");
+			return -1;
+		}
+	}
+	history_address=shmat(history_shm,NULL,0);
+	if((char*)-1==history_address){
+		perror("history_address");
+		return -1;
+	}
+
+	return 0;
+}
+//创建信号灯集并对其值初始化,成功返回0,失败返回-1
+int sem_create(void)
+{
+	int i; 		//用作循环计数
+	msg_semid=semget(msg_key,2,IPC_CREAT|IPC_EXCL|0777);
+	if(msg_semid<0){
+		if(errno==EEXIST){
+			msg_semid=semget(msg_key,2,0);
+		}
+		else{
+			printf("create msg_semid fail\n");
+			return -1;
+		}
+	}
+	for(i=0;i<sizeof(msg_val_t)/sizeof(union semun);i++)
+	{
+		semctl(msg_semid,i,SETVAL,msg_val_t[i]);
+	}
+
+	order_semid=semget(order_key,2,IPC_CREAT|IPC_EXCL|0777);
+	if(order_semid<0){
+		if(errno==EEXIST){
+			msg_semid=semget(order_key,2,0);
+		}
+		else{
+			printf("create order_semid fail\n");
+			return -1;
+		}
+	}
+	for(i=0;i<sizeof(order_val_t)/sizeof(union semun);i++)
+	{
+		semctl(order_semid,i,SETVAL,order_val_t[i]);
+	}
+
+	history_semid=semget(history_key,2,IPC_CREAT|IPC_EXCL|0777);
+	if(history_semid<0){
+		if(errno==EEXIST){
+			msg_semid=semget(history_key,2,0);
+		}
+		else{
+			printf("create history_semid fail\n");
+			return -1;
+		}
+	}
+	for(i=0;i<sizeof(history_val_t)/sizeof(union semun);i++){
+		semctl(history_semid,i,SETVAL,history_val_t[i]);
+	}
+
+	return 0;
+}
 //线君应是循环阻塞等待???
 
 //线程的要执行的函数
 void * pthread_client_request(void*empty)
 {
+	int ret;
 	message_env_t *msg_env;
 	msg_env=(message_env_t*)malloc(sizeof(message_env_t));
 
-	//使用信号量,阻塞接受,然后读取共享内存二中的数据
-	//
-	//
-	
+	while(1)
+	{
+		//使用命令信号量,读取映射的命令地址的内容到msg_env指针中
+		ret=semop(order_semid,order_op_t,2);
+		printf("%d\n",ret);
 
-	printf("pthread_client_request\n");
-	if(CGI_ORDER==msg_env->type)
-	{
-		//将数据发送给M0,调用发送命令的线程
+		strncpy((char*)msg_env,order_address,sizeof(message_env_t));
+		//此处直接使用msg_env指针指向改地址是否可行?
+		//msg_env=(message_env_t*)order_address;
+
+		//printf("pthread_client_request\n");
+		if(CGI_ORDER==msg_env->type){
+			//将数据发送给M0,调用发送命令的线程,发送后销毁
+			ret=pthread_create(&id_send_order_to_M0,NULL,pthread_send_order_to_M0,(void*)msg_env);
+			if(ret<0){
+				printf("send msg to M0 fail");
+			}
+
+		}
+		if(CGI_HISTORY==msg_env->type){
+			//查询数据库,将查询到的信息逐条写入共享内存二中
+			//此处应注意,不要与共享内存一(用以实时同步数据)的
+			//共享内存冲突,二者使用两个共享内存
+			//调用数据库线程,使用后销毁
+			ret=pthread_create(&id_sqlite,NULL,pthread_sqlite,NULL);
+			if(ret<0){
+				printf("check history to client fail");
+			}
+		}
 	}
-	if(CGI_HISTORY==msg_env->type)
-	{
-		//查询数据库,将查询到的信息逐条写入共享内存二中
-		//此处应注意,不要与共享内存一(用以实时同步数据)的
-		//共享内存冲突,二者使用两个共享内存
-		//调用数据库线程,使用后销毁
-	}
-	
+
+
+	//回收线程资源?
 }
 
 void * pthread_recv_M0_msg(void*empty)
 {
+	int ret;
 	//从Zigbee或者串口中读取数据,阻塞等待读取
 	//并将尝试获取互斥锁一,成功时将数据填充到结构体中,
 	//失败返回(pthread_mutex_trylock)
 	printf("pthread_recv_M0_msg\n");
+	while(1)
+	{
+		ret=pthread_mutex_trylock(&mutex);
+		if(ret<0){
+			continue;
+		}
+		else{
+			//将数据存储到MSG中;
+			pthread_mutex_unlock(&mutex);
+		}
+	}
 }
 
 void * pthread_send_msg_to_client(void*empty)
@@ -46,6 +225,17 @@ void * pthread_send_msg_to_client(void*empty)
 	//成功后,将结构体数据写入共享内存一中,然后释放
 	//锁一,并对信号量进行操作(可在锁外进行)
 	printf("pthread_send_msg_to_client\n");
+	while(1)
+	{
+		semop(msg_semid,msg_op_t,2);
+		printf("pthread_send_msg_to_client\n");
+		pthread_mutex_lock(&mutex);
+		strcpy(msg_address,(char*)&MSG);
+		sqlite_add_data(&MSG);
+		pthread_mutex_unlock(&mutex);
+		printf("pthread_send_msg_to_client\n");
+		sleep(5);
+	}
 }
 
 void * pthread_cemera(void*empty)
@@ -56,13 +246,16 @@ void * pthread_cemera(void*empty)
 //该线程可能无用?????,查询数据库历史的线程
 void * pthread_sqlite(void*empty)
 {
+	sqlite_inquity();
 	printf("pthread_sqlite\n");
+	pthread_exit(0);
 }
 
 //下达命令的线程
-void * pthread_send_order_to_M0(void*empty)
+void * pthread_send_order_to_M0(void*msg_env)
 {
 	printf("pthread_send_order_to_M0\n");
+	pthread_exit(0);
 }
 
 //数据库的操作,只需要添加数据,和查询全部即可
@@ -71,27 +264,24 @@ void sqlite_add_data(message_env_t* data)
 	char *sql,*ptr_time,*errmsg;
 	char *send_msg;
 	time_t time_data;
-	if(time(&time_data)<0)
-	{
+	if(time(&time_data)<0){
 		perror("get time");
 		return ;
 	}
 
 	ptr_time=ctime(&time_data);
-	if(NULL==ptr_time)
-	{
+	if(NULL==ptr_time){
 		printf("change sec is fail\n");
 		return ;
 	}
 	//对温度的正负进行判断,
-	if(data->temp[0]>128)
-	{
+	if(data->temp[0]>128){
 		sprintf(sql,"insert into storemsg values('%c',-%d,%d,\
 			%d,%d,%d,%d,%d,%d,%d,%d,'%s')",\
-				data->snum,data->temp[0],data->temp[1],\
-				data->hum[0],data->hum[1],data->x,\
-				data->y,data->z,data->ill,data->bet,\
-				data->adc,ptr_time);
+			data->snum,data->temp[0],data->temp[1],\
+			data->hum[0],data->hum[1],data->x,\
+			data->y,data->z,data->ill,data->bet,\
+			data->adc,ptr_time);
 
 		sprintf(send_msg,"store:%d\ntemp:-%d.%d\nhum:%d.%d\nx,y,z:%d,%d,%d\n\
 				ill:%d\nbet:%d\nadc:%d\n",\
@@ -100,14 +290,13 @@ void sqlite_add_data(message_env_t* data)
 				data->y,data->z,data->ill,data->bet,\
 				data->adc);
 	}
-	else
-	{
+	else{
 		sprintf(sql,"insert into storemsg values('%c',%d,%d,\
 			%d,%d,%d,%d,%d,%d,%d,%d,'%s')",\
-				data->snum,data->temp[0],data->temp[1],\
-				data->hum[0],data->hum[1],data->x,\
-				data->y,data->z,data->ill,data->bet,\
-				data->adc,ptr_time);
+			data->snum,data->temp[0],data->temp[1],\
+			data->hum[0],data->hum[1],data->x,\
+			data->y,data->z,data->ill,data->bet,\
+			data->adc,ptr_time);
 
 		sprintf(send_msg,"store:%d\n\
 				temp:%d.%d\n\
@@ -125,10 +314,9 @@ void sqlite_add_data(message_env_t* data)
 	//此处应有函数处理,将send_msg发送给CGI
 	//
 	//
-	
-	
-	if(sqlite3_exec(db,sql,NULL,NULL,&errmsg)!=SQLITE_OK)
-	{
+
+
+	if(sqlite3_exec(db,sql,NULL,NULL,&errmsg)!=SQLITE_OK){
 		printf("insert data is fail,error:%s\n",errmsg);
 		return ;
 	}
@@ -146,23 +334,18 @@ void sqlite_inquity(void)
 	char *send_msg;
 
 	sprintf(sql,"select * from storemsg");
-	if(sqlite3_get_table(db,sql,&result,&pn_row,&pn_col,&errmsg)!=SQLITE_OK)
-	{
+	if(sqlite3_get_table(db,sql,&result,&pn_row,&pn_col,&errmsg)!=SQLITE_OK){
 		printf("error:%s\n",errmsg);
 		return ;
 	}
-	else
-	{
-		if(0==pn_row)
-		{
+	else{
+		if(0==pn_row){
 			printf("now no store data\n");
 			return ;
 		}
-		else
-		{
+		else{
 			int i=1;
-			for(;i<pn_row;i++)
-			{
+			for(;i<pn_row;i++){
 				sprintf(send_msg,"store:%s\n\
 						temp:%s.%s\n\
 						hum:%s.%s\n\
@@ -180,8 +363,12 @@ void sqlite_inquity(void)
 					   );
 				//此处应有函数处理,将send_msg发送给CGI
 				//
-				//
+				semop(history_semid,history_op_t,2);
+				strcpy(history_address,send_msg);
 			}
+			//需要将结束标志传送过去吗????
+			//semop(history_semid,history_op_t,2);
+			//strcpy(history_address,"");
 		}
 	}
 
