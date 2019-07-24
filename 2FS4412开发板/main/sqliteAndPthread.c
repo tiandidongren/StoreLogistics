@@ -1,5 +1,26 @@
 #include"sqliteAndPthread.h"
 
+//打开文件按描述符并进行判断的函数,需在最前调用
+int open_port(const char*path_dev)
+{
+	fd_usb_M0=open(path_dev,O_RDWR|O_NDELAY|O_NOCTTY);
+	if(fd_usb_M0<0){
+		printf("open device id fail\n");
+		perror("???");
+		return -1;
+	}
+	
+	//回复串口的阻塞状态
+	if(fcntl(fd_usb_M0,F_SETFL,0)<0){
+		perror("fcntl F_SETFL\n");
+	}
+
+	if(0==isatty(fd_usb_M0)){
+		perror("this is not a terminal device");
+	}
+
+	return 0;
+}
 //对信号量的操作和信号量的值初始化
 void semop_semval_init(void)
 {
@@ -202,10 +223,10 @@ void * pthread_client_request(void*empty)
 void * pthread_recv_M0_msg(void*empty)
 {
 	int ret;
+
 	//从Zigbee或者串口中读取数据,阻塞等待读取
 	//并将尝试获取互斥锁一,成功时将数据填充到结构体中,
 	//失败返回(pthread_mutex_trylock)
-	printf("pthread_recv_M0_msg\n");
 	while(1)
 	{
 		ret=pthread_mutex_trylock(&mutex);
@@ -214,6 +235,9 @@ void * pthread_recv_M0_msg(void*empty)
 		}
 		else{
 			//将数据存储到MSG中;
+			read(fd_usb_M0,MSG,sizeof(message_env_t));
+
+			printf("pthread_recv_M0_msg\n");
 			pthread_mutex_unlock(&mutex);
 		}
 	}
@@ -255,6 +279,8 @@ void * pthread_sqlite(void*empty)
 //下达命令的线程
 void * pthread_send_order_to_M0(void*msg_env)
 {
+	//将接收到的命令发送给指定的设备节点
+	send(fd_usb_M0,msg_env,sizeof(message_env_t));
 	printf("pthread_send_order_to_M0\n");
 	pthread_exit(0);
 }
@@ -378,8 +404,8 @@ void sqlite_inquity(void)
 						result[i*pn_col+8],result[i*pn_col+9],\
 						result[i*pn_col+10],result[i*pn_col+11]
 					   );
-				//此处应有函数处理,将send_msg发送给CGI
-				//
+				//此处应有函数处理,将send_msg发送给CGI,
+				//使用共享内存
 				semop(history_semid,history_op_t,2);
 				strcpy(history_address,send_msg);
 			}
@@ -415,6 +441,9 @@ void sighandler_free_resource(int sig)
 	shmdt(msg_address);
 	shmdt(order_address);
 	shmdt(history_address);
+
+	//关闭文件描述符
+	close(fd_usb_M0);
 
 	printf("\nresource release\n");
 

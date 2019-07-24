@@ -12,14 +12,19 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
-#include"public.h"
+#include "public.h"
 #include "sqlite3.h"
 
 #define MEMORY_LEN 1024
 union semun{
 	int val;
 };
+
+int fd_usb_M0; 	//与M0通讯的文件描述符
 
 sqlite3 *db; 				//数据库指针
 message_env_t* MSG; 			//接收并同步信息的
@@ -55,6 +60,8 @@ union semun history_val_t[2];
 struct sembuf history_op_t[2]; 	//用来处理命令的信号量
 char *history_address;
 
+//打开文件按描述符并进行判断的函数,需在最前调用
+int open_port(const char*path_dev);
 //线程的要执行的函数
 //处理客户端请求
 void * pthread_client_request(void*);
@@ -77,6 +84,11 @@ int key_init(void);
 int memory_create(void);
 //创建信号灯集,成功返回0,失败返回-1
 int sem_create(void);
+
+//向指定的设备节点发送数据
+void send_msg(int *fd);
+//从指定的设备节点中读取数据
+void recv_msg(int *fd);
 
 //数据库的操作,只需要添加数据,和查询全部即可
 //对storemsg表进行数据的插入,并同时讲时间插入

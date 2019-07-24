@@ -11,17 +11,25 @@ int main(int argc, const char *argv[])
 {
 	int ret;
 	
+	if(argc!=2){
+		printf("Please enter:%s USBdevname\n");
+		return -1;
+	}
 	//创建数据库或者打开数据库
-	if(sqlite3_open("history.db",&db))
-	{
+	if(sqlite3_open("history.db",&db)){
 		fprintf(stderr,"open history.db is fail!,error:%s\n",
 				sqlite3_errmsg(db));
 		return -1;
 	}
 	MSG=(message_env_t*)malloc(sizeof(message_env_t));
-	if(NULL==MSG)
-	{
+	if(NULL==MSG){
 		printf("create message_env_t is fail\n");
+		return -1;
+	}
+
+	ret=open_port(argv[1]);
+	if(ret<0){
+		printf("open fail\n");
 		return -1;
 	}
 
@@ -30,8 +38,7 @@ int main(int argc, const char *argv[])
 	signal(SIGINT,sighandler_free_resource);
 	//初始化互斥锁
 	ret=pthread_mutex_init(&mutex,NULL);
-	if(ret<0)
-	{
+	if(ret<0){
 		printf("init mutex is fail\n");
 		return -1;
 	}
