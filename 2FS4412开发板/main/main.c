@@ -94,7 +94,11 @@ int main(int argc, const char *argv[])
 		return 0;
 	}
 
+	char *ch=(char*)malloc(20);
+	memset(ch,0,20);
 	while(1)
-		;
+	{
+	}
+
 	return 0;
 }

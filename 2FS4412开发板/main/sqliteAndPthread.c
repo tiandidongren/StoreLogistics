@@ -9,7 +9,7 @@ int open_port(const char*path_dev)
 		perror("???");
 		return -1;
 	}
-	
+
 	//回复串口的阻塞状态
 	if(fcntl(fd_usb_M0,F_SETFL,0)<0){
 		perror("fcntl F_SETFL\n");
@@ -19,6 +19,7 @@ int open_port(const char*path_dev)
 		perror("this is not a terminal device");
 	}
 
+	set_com_config(fd_usb_M0, 115200, 8, 'N', 1);
 	return 0;
 }
 //对信号量的操作和信号量的值初始化
@@ -234,9 +235,11 @@ void * pthread_recv_M0_msg(void*empty)
 			continue;
 		}
 		else{
+			///char buff[20]={0};
 			//将数据存储到MSG中;
-			read(fd_usb_M0,MSG,sizeof(message_env_t));
-
+			read(fd_usb_M0,(char*)MSG,sizeof(message_env_t));
+			///read(fd_usb_M0,buff,20);
+			///printf("%s\n",buff);
 			printf("pthread_recv_M0_msg\n");
 			pthread_mutex_unlock(&mutex);
 		}
@@ -448,4 +451,127 @@ void sighandler_free_resource(int sig)
 	printf("\nresource release\n");
 
 	exit(0);
+}
+
+
+int set_com_config(int fd, int baud_rate, int data_bits, char parity, int stop_bits)
+{
+	struct termios new_cfg, old_cfg;
+	int speed;
+	/*int保存原有串口配置*/
+	if (tcgetattr(fd, &old_cfg) != 0){
+		perror("tcgetattr");
+		return -1;
+	}
+
+	new_cfg =old_cfg;
+
+	/*配置为原始æ¨¡式*/
+	cfmakeraw(&new_cfg);
+	new_cfg.c_cflag &= ~CSIZE;
+
+	/*设置波特率*/
+	switch (baud_rate)
+	{
+	case 2400:{
+				  speed = B2400;
+				  break; 
+			  }
+	case 4800:{
+				  speed = B4800;
+				  break;
+			  }
+	case 9600:{
+				  speed = B9600;
+				  break;
+			  }
+	case 19200:{
+				   speed = B19200;
+				   break;
+			   }
+	case 38400:{//设置波特率   
+				   speed = B38400;
+				   break;
+			   }
+
+	default:
+	case 115000:{
+					speed = B115200;
+					break;
+				}
+	}
+
+	cfsetispeed(&new_cfg, speed);
+	cfsetospeed(&new_cfg, speed);
+
+	/*设置数据位*/
+	switch (data_bits)
+	{
+	case 7:{
+			   new_cfg.c_cflag |= CS7;
+			   break;
+		   }   
+	default:
+	case 8:{
+			   new_cfg.c_cflag |= CS8;
+			   break;
+		   }
+	}
+
+	/*设置奇偶校验位*/
+	switch (parity)
+	{
+	default:
+	case 'n':
+	case 'N':{
+				 new_cfg.c_cflag &= ~PARENB;
+				 new_cfg.c_iflag &= ~INPCK;
+				 break;
+			 }
+	case 'o':
+	case 'O':{
+				 new_cfg.c_cflag |= (PARODD |PARENB);
+				 new_cfg.c_iflag |= INPCK;
+				 break;
+			 }
+	case 'e':
+	case 'E':{
+				 new_cfg.c_cflag |= PARENB;
+				 new_cfg.c_cflag &= ~PARODD;
+				 new_cfg.c_iflag |= INPCK;
+				 break;
+			 }
+	case 's':
+	case 'S':{
+				 new_cfg.c_cflag &= ~PARENB;
+				 new_cfg.c_cflag &= ~CSTOPB;
+				 break;
+			 }
+	}
+
+	/*设置停止位*/
+	switch (stop_bits)
+	{
+	default:
+	case 1:{
+			   new_cfg.c_cflag &= ~CSTOPB;
+			   break;
+		   }   
+	case 2:{
+			   new_cfg.c_cflag |= CSTOPB;
+			   break;
+		   }
+	}
+
+	/*设置为手动控制等待时间和最小接收字符*/
+	new_cfg.c_cc[VTIME] = 0;
+	new_cfg.c_cc[VMIN] = 1;
+	tcflush(fd, TCIFLUSH);
+	if ((tcsetattr(fd, TCSANOW, &new_cfg)) != 0)
+	{
+		perror("tcsetattr");
+		return -1;
+	}
+
+	return 0;
 }

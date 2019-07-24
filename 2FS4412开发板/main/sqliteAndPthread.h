@@ -9,12 +9,13 @@
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <sys/sem.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 
 #include "public.h"
 #include "sqlite3.h"
@@ -99,4 +100,6 @@ void sqlite_inquity(void);
 //使用信号处理函数,回收线程资源
 void sighandler_free_resource(int sig);
 
+//shezhibodelv
+int set_com_config(int fd, int baud_rate, int data_bits, char parity, int stop_bits);
 #endif
