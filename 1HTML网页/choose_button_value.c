@@ -4,19 +4,19 @@
 int ret_equipment_id(char *name)
 {
 	cgiFormString("formbutton1",name,15);  
-	if(!strcmp(name,"提交")){
+	if(name[0]!=0){
 		return EQUI_BUZZER;
 	}
 	cgiFormString("formbutton3",name,15);  
-	if(!strcmp(name,"提交")){
+	if(name[0]!=0){
 		return EQUI_LED;
 	}
 	cgiFormString("formbutton4",name,15);  
-	if(!strcmp(name,"提交")){
+	if(name[0]!=0){
 		return EQUI_FUN;
 	}
 	cgiFormString("formbutton5",name,15);  
-	if(!strcmp(name,"提交")){
+	if(name[0]!=0){
 		return EQUI_PIPE;
 	}
 
@@ -26,76 +26,43 @@ int ret_equipment_id(char *name)
 //根据相应的设备号调用相应的函数判断设备命令
 void control_fun(char *val)
 {
-	cgiFormString("fun_close",name,15);  
-	if(1==name[0]){
-		*val=FUN_CLOSE;
-		return ;
-	}
-	
-	cgiFormString("fun_first",name,15);  
-	if(1==name[0]){
-		*val=FUN_LEVEL1;
-		return ;
-	}
-	
-	cgiFormString("fun_two",name,15);  
-	if(1==name[0]){
-		*val=FUN_LEVEL2;
-		return ;
-	}
-
-	cgiFormString("fun_three",name,15);  
-	if(1==name[0]){
-		*val=FUN_LEVEL3;
-		return ;
-	}
+	cgiFormString("formradio2",val,20);  
+	if(*val=='0')
+		*val=0;
+	if(*val='1')
+		*val=1;
+	if(*val='2')
+		*val=2;
+	if(*val='3')
+		*val=3;
 }
 
 void control_led(char *val)
 {
-	cgiFormString("led_close",name,15);  
-	if(1==name[0]){
-		*val=LED_CLOSE;
-		return ;
-	}
-	
-	cgiFormString("led_open",name,15);  
-	if(1==name[0]){
-		*val=LED_OPEN;
-		return ;
-	}	
+	cgiFormString("formradio3",val,20);  
+	if(*val=='0')
+		*val=0;
+	if(*val='1')
+		*val=1;
 }
 
 void control_buzzer(char *val)
 {
-	cgiFormString("buzzer_close",name,15);  
-	if(1==name[0]){
-		*val=BUZZER_CLOSE;
-		return ;
-	}
-	
-	cgiFormString("buzzer_open",name,15);  
-	if(1==name[0]){
-		*val=BUZZER_OPEN;
-		return ;
-	}	
+	cgiFormString("formradio1",val,20);  
+	if(*val=='0')
+		*val=0;
+	if(*val='1')
+		*val=1;
 }
 
 void control_pipe(char *val)
 {
-	cgiFormString("pipe_close",name,15);  
-	if(1==name[0]){
-		*val=PIPE_CLOSE;
-		return ;
+	cgiFormString("formradio4",val,20);  
+	if(*val=='0')
+		*val=0;
+	if(*val=='1')
+	{
+		cgiFormString("formtext4",val,20);  
+		*val=*val-'0';
 	}
-	
-	cgiFormString("pipe_open",name,15);  
-	if(1==name[0]){
-
-
-
-
-
-		return ;
-	}	
 }
