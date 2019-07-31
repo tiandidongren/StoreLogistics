@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <sys/ioctl.h>
+//#include <sqlite3.h>
 
 #include "public.h"
 #include "sqlite3.h"
@@ -42,9 +43,12 @@ pthread_t id_client_request, 	//处理客户端请求,根据相应请求调用�
 
 pthread_mutex_t mutex; 		//用来保护全局变量的结构体
 
-key_t msg_key, 				//同步实时信息用的key,共享内存和信号量
-	  order_key, 			//CGI下达命令用的key
-	  history_key; 			//上传历史数据的key
+key_t msg_key_add, 				//同步实时信息用的key,共享内存和信号量
+	  order_key_add, 			//CGI下达命令用的key
+	  history_key_add; 			//上传历史数据的key
+key_t msg_key_sem, 				//同步实时信息用的key,共享内存和信号量
+	  order_key_sem, 			//CGI下达命令用的key
+	  history_key_sem; 			//上传历史数据的key
 
 int msg_semid,order_semid,history_semid;
 int msg_shm,order_shm,history_shm;
@@ -96,6 +100,8 @@ void recv_msg(int *fd);
 void sqlite_add_data(message_env_t* data);
 //查询并讲查询到的历史数据通过???函数传递给CGI
 void sqlite_inquity(void);
+//回调函数
+int empty_callback(void *data,int f_num,char **f_calue,char **f_name);
 
 //使用信号处理函数,回收线程资源
 void sighandler_free_resource(int sig);

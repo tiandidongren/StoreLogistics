@@ -1,5 +1,8 @@
 #include "choose_button_value.h"
 
+char *html_num[]={
+	"0","1","2","3"};
+
 //通过判断那个button按钮来返回设备号
 int ret_equipment_id(char *name)
 {
@@ -26,41 +29,45 @@ int ret_equipment_id(char *name)
 //根据相应的设备号调用相应的函数判断设备命令
 void control_fun(char *val)
 {
-	cgiFormString("formradio2",val,20);  
-	if(*val=='0')
+	int num;
+	cgiFormRadio("formradio2",html_num,4,&num,0);
+	if(num==0)
 		*val=0;
-	if(*val='1')
+	if(num==1)
 		*val=1;
-	if(*val='2')
+	if(num==2)
 		*val=2;
-	if(*val='3')
+	if(num==3)
 		*val=3;
 }
 
 void control_led(char *val)
 {
-	cgiFormString("formradio3",val,20);  
-	if(*val=='0')
+	int num;
+	cgiFormRadio("formradio3",html_num,4,&num,0);
+	if(num==0)
 		*val=0;
-	if(*val='1')
+	if(num==1)
 		*val=1;
 }
 
 void control_buzzer(char *val)
 {
-	cgiFormString("formradio1",val,20);  
-	if(*val=='0')
+	int num;
+	cgiFormRadio("formradio1",html_num,4,&num,0);
+	if(num==0)
 		*val=0;
-	if(*val='1')
+	if(num==1)
 		*val=1;
 }
 
 void control_pipe(char *val)
 {
-	cgiFormString("formradio4",val,20);  
-	if(*val=='0')
-		*val=0;
-	if(*val=='1')
+	int num;
+	cgiFormRadio("formradio4",html_num,4,&num,0);
+	if(num==0)
+		*val=0xf;
+	if(num==1)
 	{
 		cgiFormString("formtext4",val,20);  
 		*val=*val-'0';

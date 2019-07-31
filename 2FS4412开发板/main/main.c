@@ -1,37 +1,44 @@
 #include<stdio.h>
 #include<pthread.h>
-#include"sqlite3.h"
 #include<signal.h>
+//#include<sqlite3.h>
 
-//#include"exynos4412.h"
 #include"public.h"
+#include"sqlite3.h"
 #include"sqliteAndPthread.h"
+
+
+//#define DEBUG_MY
 
 int main(int argc, const char *argv[])
 {
 	int ret;
-	
+#ifndef DEBUG_MY	
 	if(argc!=2){
 		printf("Please enter:%s USBdevname\n");
 		return -1;
 	}
+#endif
 	//创建数据库或者打开数据库
-	if(sqlite3_open("history.db",&db)){
+	if(sqlite3_open("/history.db",&db)){
 		fprintf(stderr,"open history.db is fail!,error:%s\n",
 				sqlite3_errmsg(db));
 		return -1;
 	}
+	printf("open success\n");
 	MSG=(message_env_t*)malloc(sizeof(message_env_t));
 	if(NULL==MSG){
 		printf("create message_env_t is fail\n");
 		return -1;
 	}
 
+#ifndef DEBUG_MY	
 	ret=open_port(argv[1]);
 	if(ret<0){
 		printf("open fail\n");
 		return -1;
 	}
+#endif
 
 	//注册信号处理函数,一旦ctrl+c结束进程,则将
 	//进成的资源释放
@@ -43,7 +50,7 @@ int main(int argc, const char *argv[])
 		return -1;
 	}
 	
-	//对信号量的操作和信号量的值初始化,在调用共享内存和信号灯集前调用
+	//对号量的操作和信号量的值初始化,在调用共享内存和信号灯集前调用
  	semop_semval_init();
 
 	//调用初始化钥匙key,成功返回0,失败返回-1

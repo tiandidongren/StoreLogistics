@@ -1,7 +1,7 @@
 CFLAGS=-g -Wall
-CC=arm-none-linux-gnueabi-gcc
-AR=arm-none-linux-gnueabi-ar
-RANLIB=arm-none-linux-gnueabi-ranlib
+CC=gcc
+AR=ar
+RANLIB=ranlib
 LIBS=-L./ -lcgic
 
 all: libcgic.a cgictest.cgi capture
@@ -19,12 +19,10 @@ libcgic.a: cgic.o cgic.h
 #mingw32 and cygwin users: replace .cgi with .exe
 
 cgictest.cgi: cgictest.o libcgic.a
-	#gcc cgictest.o -o cgictest.cgi ${LIBS}
-	$(CC) $(CFLAGS) cgictest.o -o cgictest.cgi ${LIBS}
+	gcc cgictest.o -o cgictest.cgi ${LIBS}
 
 capture: capture.o libcgic.a
-	#gcc capture.o -o capture ${LIBS}
-	$(CC) $(CFLAGS) capture.o -o capture ${LIBS}
+	gcc capture.o -o capture ${LIBS}
 
 clean:
 	rm -f *.o *.a cgictest.cgi capture cgicunittest

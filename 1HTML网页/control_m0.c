@@ -7,9 +7,10 @@
 #include "cgic.h"
 #include "choose_button_value.h"
 
+#define NO_USE
 int cgiMain()
 {
-	int ret;
+	int ret,ret_key,ret_mem;
 	char *submit=(char*)malloc(15);
 	memset(submit,0,15);
 	char *value=(char*)malloc(20);
@@ -17,15 +18,14 @@ int cgiMain()
 	MSG=(message_env_t*)malloc(sizeof(message_env_t));
 	memset(MSG,0,sizeof(message_env_t));
 
-
-	ret=key_init();
-	if(ret<0){
+	ret_key=key_init();
+	if(ret_key<0){
 		printf("key error\n");
 		return -1;
 	}
 
-	ret=memory_order_create();
-	if(ret<0){
+	ret_mem=memory_order_create();
+	if(ret_mem<0){
 		printf("memory error\n");
 		return -1;
 	}
@@ -33,8 +33,7 @@ int cgiMain()
 	semop_semval_order_init();
 	//通过返回值判断是哪个按钮提交
 
-	ret=ret_equipment_id(submit);
-	int ret_fun=cgiFormSuccess;
+	//ret=ret_equipment_id(submit);
 	switch(ret_equipment_id(submit))
 	{
 	case EQUI_BUZZER:
@@ -62,16 +61,24 @@ int cgiMain()
 	MSG->flag|=*value;
 	MSG->flag|=MANUAL;
 
-	//semop(order_semid,order_op_t,2);
+#ifndef NO_USE
+	semop(order_semid,order_op_t,1);
 	//strncpy(order_address,(char*)MSG,sizeof(message_env_t));
-
+#else
+	strncpy(((message_env_t*)order_address)->head,"st:",3);
+#endif
+	((message_env_t*)order_address)->flag=MSG->flag;
+	((message_env_t*)order_address)->type=CGI_ORDER;
+#ifndef NO_USE
+	semop(order_semid,order_op_t+1,1);
+#endif
 
 	//显示提交成功,并返回控制网页
 	cgiHeaderContentType("text/html");
 	printf("<html><head><title>Untitled</title></head>\
 			<body><div><font color=\"#00000\" class=\"ws26\">\
-			msg->flag:%d   value:%d ret:%d ret_fun:%d\
-			</font></div></body></html>",MSG->flag,*value,ret,ret_fun);
+			msg->flag:%d   value:%d ret:%dret_key:%dret_mem:%d order->flag:%d   \
+			</font></div></body></html>",MSG->flag,*value,ret,ret_key,ret_mem,((message_env_t*)order_address)->flag);
 
 ERR_CLO:
 	free(submit);

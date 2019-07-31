@@ -58,7 +58,7 @@ typedef struct sendEnv 	//环境数据的结构体
 	uint32_t bet; 		//电池电量
 	uint32_t adc; 		//电位器信息,电池电量
 	uint32_t flag; 		//数据类型,风扇 蜂鸣器 LED灯 数码管的状态
-	Add_t extension; 	//留作扩展
+	//Add_t extension; 	//留作扩展
 }message_env_t;
 
 typedef struct sendGoods

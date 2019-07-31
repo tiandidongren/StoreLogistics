@@ -23,20 +23,34 @@ int cgiMain()
 		printf("memory error\n");
 		return -1;
 	}
+	
+	ret=memory_order_create();
+	if(ret<0){
+		printf("memory error\n");
+		return -1;
+	}
 
+
+	semop_semval_order_init();
 	semop_semval_history_init();
-	while(x<540)
+
+	MSG=(message_env_t*)order_address;
+	MSG->type=CGI_HISTORY;
+	strncpy(MSG->head,"st:",3);
+	usleep(100);
+	while(1)
 	{
-		do{
-			ret=semop(history_semid,history_op_t,2);
-		}while(ret<0);
+		//do{
+			//ret=semop(history_semid,history_op_t,2);
+		//}while(ret<0);
 		//strnpcy((char*)MSG,msg_address,sizeof(message_env_t));
 		//MSG=(message_env_t*)history_address;
 
 
+
 		cgiHeaderContentType("text/html");
 
-		fprintf(stdout,"<html><head><title>Untitled</title>\
+		printf("<html><head><title>Untitled</title>\
 				<meta http-equiv=\"content-type\" content=\"text/html; charset=iso-8859-1\">\
 				<meta name=\"generator\" content=\"Web Page Maker (unregistered version)\">\
 				<style type=\"text/css\">\
@@ -71,7 +85,7 @@ int cgiMain()
 			<div id=\"back_image\" style=\"position:absolute; overflow:hidden; left:0px; top:0px; width:1920px; height:1080px; z-index:0\"><img src=\"/images/1563976566594.jpg\" alt=\"\" title=\"\" border=0 width=1920 height=1080></div>\
 			<div id=\"information_history\" style=\"position:absolute; overflow:hidden; left:400px; top:%dpx; width:736px; height:521px; z-index:1\">\
 			<div class=\"wpmd\">\
-			<div><font color=\"#000000\" class=\"ws26\">%s--</font></div>\
+			<div><font color=\"#000000\" class=\"ws26\"history_address:%s......</font></div>\
 			</div></div>\
 			<div id=\"title\" style=\"position:absolute; overflow:hidden; left:380px; top:140px; width:276px; height:46px; z-index:2\">\
 			<div class=\"wpmd\">\
@@ -79,7 +93,11 @@ int cgiMain()
 			</div></div>\
 			<div style=\"position:absolute;left:0;top:1090px;z-index:999\"><a href=\"http://www.webpage-maker.com\"><img border=0 src=\"/images/wpmhome.gif\" alt=\"Web Page Maker, create your own web pages.\"</a></div>\
 			</body></html>",x,history_address);
-		x+=30;
+			x+=70;
+
+		if(history_address[0]=='\0')
+			break;
+		usleep(1);
 	}
 	return 0;
 }

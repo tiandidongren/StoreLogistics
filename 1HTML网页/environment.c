@@ -27,17 +27,13 @@ int cgiMain()
 
 	semop_semval_msg_init();
 
-	do{
-		ret=semop(msg_semid,msg_op_t,2);
-	}while(ret<0);
+	ret=semop(msg_semid,msg_op_t,1);
 	//strnpcy((char*)MSG,msg_address,sizeof(message_env_t));
 	MSG=(message_env_t*)msg_address;
 
 	cgiHeaderContentType("text/html");	
 
-	printf("\
-			<html>\
-			<head>\
+	printf("<html><head>\
 			<title>Untitled</title>\
 			<meta http-equiv=\"gcontent-type\" content=\"text/html; charset=iso-8859-1\">\
 			<meta name=\"ggenerator\" content=\"Web Page Maker (unregistered version)\">\
@@ -74,13 +70,13 @@ int cgiMain()
 		<div id=\"ginformation_show\" style=\"position:absolute; overflow:hidden; left:380px; top:200px; width:736px; height:521px; z-index:1\">\
 		<div class=\"gwpmd\">\
 		<div><font class=\"gws26\">\
-		temp:%c.%c\n\
-		hum:%c.%c\n\
-		x,y,z:%c,%c,%c\
-		ill:%d\
-		bet:%d\
-		adc:%d\
-		ret:%d\n\
+		temp:%d.%d\n\
+		hum:%d.%d\n\
+		x,y,z:%d,%d,%d\n\
+		ill:%d\n\
+		bet:%d\n\
+		adc:%d\n\
+		ret:%d\
 		</font></div>\
 		</div></div>\
 		<div id=\"gtitle\" style=\"position:absolute; overflow:hidden; left:380px; top:140px; width:276px; height:46px; z-index:2\">\
@@ -91,6 +87,10 @@ int cgiMain()
 		</body></html>",\
 		MSG->temp[0],MSG->temp[1],MSG->hum[0],MSG->hum[1],\
 		MSG->x,MSG->y,MSG->z,MSG->ill,MSG->bet,MSG->adc,ret);
+
+	ret=semop(msg_semid,msg_op_t+1,1);
+	MSG=NULL;
+	shmdt(msg_address);
 
 	return 0;
 }

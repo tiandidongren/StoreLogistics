@@ -17,9 +17,9 @@
 #include "public.h"
 
 #define MEMORY_LEN 1024
-union semun{
-	int val;
-};
+//union semun{
+//	int val;
+//};
 
 int fd_usb_M0; 	//与M0通讯的文件描述符
 
@@ -27,22 +27,25 @@ message_env_t* MSG; 			//接收并同步信息的
 
 pthread_mutex_t mutex; 		//用来保护全局变量的结构体
 
-key_t msg_key, 				//同步实时信息用的key,共享内存和信号量
-	  order_key, 			//CGI下达命令用的key
-	  history_key; 			//上传历史数据的key
+key_t msg_key_add, 				//同步实时信息用的key,共享内存和信号量
+	  order_key_add, 			//CGI下达命令用的key
+	  history_key_add; 			//上传历史数据的key
+key_t msg_key_sem, 				//同步实时信息用的key,共享内存和信号量
+	  order_key_sem, 			//CGI下达命令用的key
+	  history_key_sem; 			//上传历史数据的key
 
 int msg_semid,order_semid,history_semid;
 int msg_shm,order_shm,history_shm;
 
-union semun msg_val_t[2];
+//union semun msg_val_t[2];
 struct sembuf msg_op_t[2]; 	//用来处理同步信息的共享内存的信号量{
 char *msg_address;
 
-union semun order_val_t[2];
+//union semun order_val_t[2];
 struct sembuf order_op_t[2];	//用来处理命令的信号量{
 char *order_address;
 
-union semun history_val_t[2];
+//union semun history_val_t[2];
 struct sembuf history_op_t[2]; 	//用来处理命令的信号量
 char *history_address;
 
@@ -66,10 +69,6 @@ int sem_msg_create(void);
 int sem_order_create(void);
 //创建信号灯集,成功返回0,失败返回-1
 int sem_history_create(void);
-
-
-
-
 
 
 
